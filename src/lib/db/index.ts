@@ -2,13 +2,16 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import * as schema from "./schema";
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL || "file:local.db",
-});
+// Use /tmp on Vercel (writable), local file otherwise
+const dbUrl = process.env.TURSO_DATABASE_URL
+  || (process.env.VERCEL ? "file:/tmp/homeupkeep.db" : "file:local.db");
+
+const client = createClient({ url: dbUrl });
 
 export const db = drizzle(client, { schema });
 
 let initialized = false;
+let seeded = false;
 
 export async function initializeDatabase() {
   if (initialized) return;
@@ -273,4 +276,11 @@ export async function initializeDatabase() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Auto-seed on Vercel (cold starts wipe /tmp)
+  if (!seeded) {
+    seeded = true;
+    const { seedDatabase } = await import("../seed");
+    await seedDatabase();
+  }
 }
