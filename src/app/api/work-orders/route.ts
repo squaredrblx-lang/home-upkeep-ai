@@ -8,18 +8,18 @@ import { eq, and, desc } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const propertyId = req.nextUrl.searchParams.get("propertyId");
     const status = req.nextUrl.searchParams.get("status");
 
-    const userProps = db.select({ id: properties.id }).from(properties).where(eq(properties.userId, session.userId)).all();
+    const userProps = await db.select({ id: properties.id }).from(properties).where(eq(properties.userId, session.userId)).all();
     const propIds = userProps.map(p => p.id);
     if (propIds.length === 0) return NextResponse.json([]);
 
-    let allOrders = db.select().from(workOrders).orderBy(desc(workOrders.createdAt)).all().filter(wo => propIds.includes(wo.propertyId));
+    let allOrders = (await db.select().from(workOrders).orderBy(desc(workOrders.createdAt)).all()).filter(wo => propIds.includes(wo.propertyId));
 
     if (propertyId) {
       allOrders = allOrders.filter(wo => wo.propertyId === propertyId);
@@ -29,10 +29,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Enrich with property name and contractor name
-    const enriched = allOrders.map(wo => {
-      const prop = db.select().from(properties).where(eq(properties.id, wo.propertyId)).get();
-      const contractor = wo.contractorId ? db.select().from(contractors).where(eq(contractors.id, wo.contractorId)).get() : null;
-      const system = wo.systemId ? db.select().from(systems).where(eq(systems.id, wo.systemId)).get() : null;
+    const enriched = await Promise.all(allOrders.map(async wo => {
+      const prop = await db.select().from(properties).where(eq(properties.id, wo.propertyId)).get();
+      const contractor = wo.contractorId ? await db.select().from(contractors).where(eq(contractors.id, wo.contractorId)).get() : null;
+      const system = wo.systemId ? await db.select().from(systems).where(eq(systems.id, wo.systemId)).get() : null;
 
       return {
         ...wo,
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         contractorName: contractor?.companyName || null,
         systemName: system?.name || null,
       };
-    });
+    }));
 
     return NextResponse.json(enriched);
   } catch (error) {
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -59,13 +59,13 @@ export async function POST(req: NextRequest) {
     const parsed = workOrderSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
-    const prop = db.select().from(properties).where(and(eq(properties.id, parsed.data.propertyId), eq(properties.userId, session.userId))).get();
+    const prop = await db.select().from(properties).where(and(eq(properties.id, parsed.data.propertyId), eq(properties.userId, session.userId))).get();
     if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
     const id = generateId();
-    db.insert(workOrders).values({ id, ...parsed.data }).run();
+    await db.insert(workOrders).values({ id, ...parsed.data }).run();
 
-    const wo = db.select().from(workOrders).where(eq(workOrders.id, id)).get();
+    const wo = await db.select().from(workOrders).where(eq(workOrders.id, id)).get();
     return NextResponse.json(wo, { status: 201 });
   } catch (error) {
     console.error("Work orders POST error:", error);
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -83,10 +83,10 @@ export async function PATCH(req: NextRequest) {
     const { id, ...updates } = body;
     if (!id) return NextResponse.json({ error: "Work order ID required" }, { status: 400 });
 
-    const wo = db.select().from(workOrders).where(eq(workOrders.id, id)).get();
+    const wo = await db.select().from(workOrders).where(eq(workOrders.id, id)).get();
     if (!wo) return NextResponse.json({ error: "Work order not found" }, { status: 404 });
 
-    const prop = db.select().from(properties).where(and(eq(properties.id, wo.propertyId), eq(properties.userId, session.userId))).get();
+    const prop = await db.select().from(properties).where(and(eq(properties.id, wo.propertyId), eq(properties.userId, session.userId))).get();
     if (!prop) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
     // Add completedDate when status changes to completed
@@ -94,9 +94,9 @@ export async function PATCH(req: NextRequest) {
       updates.completedDate = new Date().toISOString().split("T")[0];
     }
 
-    db.update(workOrders).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(workOrders.id, id)).run();
+    await db.update(workOrders).set({ ...updates, updatedAt: new Date().toISOString() }).where(eq(workOrders.id, id)).run();
 
-    const updated = db.select().from(workOrders).where(eq(workOrders.id, id)).get();
+    const updated = await db.select().from(workOrders).where(eq(workOrders.id, id)).get();
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Work orders PATCH error:", error);

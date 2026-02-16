@@ -6,11 +6,11 @@ import { eq } from "drizzle-orm";
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const userProps = db.select().from(properties).where(eq(properties.userId, session.userId)).all();
+    const userProps = await db.select().from(properties).where(eq(properties.userId, session.userId)).all();
     const propIds = userProps.map(p => p.id);
 
     if (propIds.length === 0) {
@@ -31,11 +31,11 @@ export async function GET() {
       });
     }
 
-    const allSystems = db.select().from(systems).all().filter(s => propIds.includes(s.propertyId));
-    const allWorkOrders = db.select().from(workOrders).all().filter(wo => propIds.includes(wo.propertyId));
-    const allExpenses = db.select().from(expenses).all().filter(e => propIds.includes(e.propertyId));
-    const allSchedules = db.select().from(maintenanceSchedules).all().filter(ms => propIds.includes(ms.propertyId));
-    const allTenants = db.select().from(tenants).all().filter(t => propIds.includes(t.propertyId));
+    const allSystems = (await db.select().from(systems).all()).filter(s => propIds.includes(s.propertyId));
+    const allWorkOrders = (await db.select().from(workOrders).all()).filter(wo => propIds.includes(wo.propertyId));
+    const allExpenses = (await db.select().from(expenses).all()).filter(e => propIds.includes(e.propertyId));
+    const allSchedules = (await db.select().from(maintenanceSchedules).all()).filter(ms => propIds.includes(ms.propertyId));
+    const allTenants = (await db.select().from(tenants).all()).filter(t => propIds.includes(t.propertyId));
 
     const now = new Date();
     const thisYear = now.getFullYear().toString();

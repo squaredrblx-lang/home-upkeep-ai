@@ -1,25 +1,20 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 import * as schema from "./schema";
-import path from "path";
-import fs from "fs";
 
-const DB_PATH = process.env.DATABASE_URL || path.join(process.cwd(), "data", "homeupkeep.db");
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL || "file:local.db",
+});
 
-// Ensure data directory exists
-const dbDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
+export const db = drizzle(client, { schema });
 
-const sqlite = new Database(DB_PATH);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
+let initialized = false;
 
-export const db = drizzle(sqlite, { schema });
+export async function initializeDatabase() {
+  if (initialized) return;
+  initialized = true;
 
-export function initializeDatabase() {
-  sqlite.exec(`
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,

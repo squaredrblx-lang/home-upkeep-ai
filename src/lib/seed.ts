@@ -5,12 +5,12 @@ import { hashPassword } from "./auth";
 
 export async function seedDatabase() {
   // Check if already seeded
-  const existingUsers = db.select().from(users).all();
+  const existingUsers = await db.select().from(users).all();
   if (existingUsers.length > 0) return;
 
   // Demo user
   const userId = generateId();
-  db.insert(users).values({
+  await db.insert(users).values({
     id: userId,
     email: "demo@homeupkeep.ai",
     passwordHash: hashPassword("demo1234"),
@@ -24,7 +24,7 @@ export async function seedDatabase() {
   const prop2Id = generateId();
   const prop3Id = generateId();
 
-  db.insert(properties).values([
+  await db.insert(properties).values([
     {
       id: prop1Id,
       userId,
@@ -86,7 +86,7 @@ export async function seedDatabase() {
   const unit3c = generateId();
   const unit3d = generateId();
 
-  db.insert(units).values([
+  await db.insert(units).values([
     { id: unit1a, propertyId: prop1Id, name: "Unit A", floor: 1, bedrooms: 2, bathrooms: 1, sqft: 1200, monthlyRent: 1100, isOccupied: true },
     { id: unit1b, propertyId: prop1Id, name: "Unit B", floor: 2, bedrooms: 2, bathrooms: 1, sqft: 1200, monthlyRent: 1150, isOccupied: true },
     { id: unit3a, propertyId: prop3Id, name: "Apt 101", floor: 1, bedrooms: 1, bathrooms: 1, sqft: 700, monthlyRent: 850, isOccupied: true },
@@ -97,7 +97,7 @@ export async function seedDatabase() {
 
   // Systems
   const waterHeaterId = generateId();
-  db.insert(systems).values([
+  await db.insert(systems).values([
     { id: generateId(), propertyId: prop1Id, category: "hvac", name: "Central Furnace", make: "Carrier", model: "59SC5A", installDate: "2012-11-01", expectedLifespanYears: 20, condition: "fair", lastServiceDate: "2024-10-15", riskScore: 45 },
     { id: generateId(), propertyId: prop1Id, category: "hvac", name: "Central AC", make: "Carrier", model: "24ACC6", installDate: "2012-11-01", expectedLifespanYears: 15, condition: "poor", lastServiceDate: "2024-05-20", riskScore: 72 },
     { id: waterHeaterId, propertyId: prop1Id, category: "plumbing", name: "Water Heater", make: "Rheem", model: "XE50T06ST45U1", installDate: "2014-03-10", expectedLifespanYears: 12, condition: "poor", warrantyExpiration: "2024-03-10", lastServiceDate: "2023-06-01", riskScore: 85 },
@@ -118,7 +118,7 @@ export async function seedDatabase() {
   const cont2 = generateId();
   const cont3 = generateId();
 
-  db.insert(contractors).values([
+  await db.insert(contractors).values([
     { id: cont1, userId, companyName: "ABC Plumbing & Heating", contactName: "Mike Torres", email: "mike@abcplumbing.com", phone: "(555) 234-5678", specialty: "plumbing", rating: 4.8, jobsCompleted: 12, isPreferred: true },
     { id: cont2, userId, companyName: "Elite Electric", contactName: "Sarah Chen", email: "sarah@eliteelectric.com", phone: "(555) 345-6789", specialty: "electrical", rating: 4.5, jobsCompleted: 5, isPreferred: true },
     { id: cont3, userId, companyName: "Top Notch Roofing", contactName: "James Miller", email: "james@topnotchroofing.com", phone: "(555) 456-7890", specialty: "roofing", rating: 4.2, jobsCompleted: 3, isPreferred: false },
@@ -128,7 +128,7 @@ export async function seedDatabase() {
   const ten1 = generateId();
   const ten2 = generateId();
 
-  db.insert(tenants).values([
+  await db.insert(tenants).values([
     { id: ten1, propertyId: prop1Id, unitId: unit1a, name: "Maria Johnson", email: "maria.j@email.com", phone: "(555) 567-8901", leaseStart: "2023-08-01", leaseEnd: "2025-07-31", monthlyRent: 1100, depositAmount: 1100, isActive: true },
     { id: ten2, propertyId: prop1Id, unitId: unit1b, name: "David Kim", email: "david.k@email.com", phone: "(555) 678-9012", leaseStart: "2024-01-01", leaseEnd: "2025-12-31", monthlyRent: 1150, depositAmount: 1150, isActive: true },
     { id: generateId(), propertyId: prop3Id, unitId: unit3a, name: "Lisa Park", email: "lisa.p@email.com", phone: "(555) 789-0123", leaseStart: "2024-06-01", leaseEnd: "2025-05-31", monthlyRent: 850, depositAmount: 850, isActive: true },
@@ -137,7 +137,7 @@ export async function seedDatabase() {
   ]).run();
 
   // Work Orders
-  db.insert(workOrders).values([
+  await db.insert(workOrders).values([
     { id: generateId(), propertyId: prop1Id, systemId: waterHeaterId, contractorId: cont1, title: "Water heater making rumbling noises", description: "Tenant in Unit A reports loud rumbling from basement. Water heater is 10+ years old. Sediment buildup likely. May need flush or replacement.", status: "open", priority: "high", category: "repair", estimatedCost: 1200, scheduledDate: "2026-02-20" },
     { id: generateId(), propertyId: prop1Id, unitId: unit1b, tenantId: ten2, title: "Kitchen faucet dripping", description: "Slow drip from kitchen faucet. Washer replacement likely needed.", status: "assigned", priority: "low", category: "repair", contractorId: cont1, estimatedCost: 150, scheduledDate: "2026-02-25" },
     { id: generateId(), propertyId: prop3Id, title: "Electrical panel replacement - URGENT", description: "Federal Pacific panel is a known fire hazard. Multiple inspectors have flagged this. Must be replaced with modern panel.", status: "in_progress", priority: "emergency", category: "replacement", contractorId: cont2, estimatedCost: 4500, scheduledDate: "2026-02-18" },
@@ -146,7 +146,7 @@ export async function seedDatabase() {
   ]).run();
 
   // Expenses
-  db.insert(expenses).values([
+  await db.insert(expenses).values([
     { id: generateId(), propertyId: prop1Id, category: "repair", description: "Emergency pipe repair - Unit A bathroom", amount: 450, date: "2025-11-15", vendor: "ABC Plumbing", paymentMethod: "check", isDeductible: true },
     { id: generateId(), propertyId: prop1Id, category: "preventive", description: "Furnace annual inspection", amount: 185, date: "2025-10-15", vendor: "ABC Plumbing & Heating", paymentMethod: "credit_card", isDeductible: true },
     { id: generateId(), propertyId: prop2Id, category: "preventive", description: "HVAC tune-up", amount: 185, date: "2025-01-10", vendor: "ABC Plumbing & Heating", paymentMethod: "credit_card", isDeductible: true },
@@ -158,7 +158,7 @@ export async function seedDatabase() {
   ]).run();
 
   // Maintenance Schedules
-  db.insert(maintenanceSchedules).values([
+  await db.insert(maintenanceSchedules).values([
     { id: generateId(), propertyId: prop1Id, title: "HVAC Filter Change", description: "Replace furnace and AC filters", frequencyDays: 90, lastCompleted: "2025-12-01", nextDue: "2026-03-01", season: "any" },
     { id: generateId(), propertyId: prop1Id, title: "Gutter Cleaning", description: "Clean all gutters and downspouts", frequencyDays: 180, lastCompleted: "2025-10-15", nextDue: "2026-04-15", season: "spring" },
     { id: generateId(), propertyId: prop1Id, title: "Smoke Detector Test", description: "Test all smoke and CO detectors, replace batteries", frequencyDays: 180, lastCompleted: "2025-09-01", nextDue: "2026-03-01", season: "any" },

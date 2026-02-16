@@ -8,20 +8,20 @@ import { eq, and, sql, desc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const props = db.select().from(properties).where(eq(properties.userId, session.userId)).orderBy(desc(properties.createdAt)).all();
+    const props = await db.select().from(properties).where(eq(properties.userId, session.userId)).orderBy(desc(properties.createdAt)).all();
 
     // Enrich with counts
-    const enriched = props.map((p) => {
-      const systemCount = db.select({ count: sql<number>`count(*)` }).from(systems).where(eq(systems.propertyId, p.id)).get();
-      const openWorkOrders = db.select({ count: sql<number>`count(*)` }).from(workOrders).where(and(eq(workOrders.propertyId, p.id), sql`${workOrders.status} != 'completed' AND ${workOrders.status} != 'cancelled'`)).get();
-      const unitCount = db.select({ count: sql<number>`count(*)` }).from(units).where(eq(units.propertyId, p.id)).get();
-      const totalExpenses = db.select({ total: sql<number>`COALESCE(sum(${expenses.amount}), 0)` }).from(expenses).where(eq(expenses.propertyId, p.id)).get();
+    const enriched = await Promise.all(props.map(async (p) => {
+      const systemCount = await db.select({ count: sql<number>`count(*)` }).from(systems).where(eq(systems.propertyId, p.id)).get();
+      const openWorkOrders = await db.select({ count: sql<number>`count(*)` }).from(workOrders).where(and(eq(workOrders.propertyId, p.id), sql`${workOrders.status} != 'completed' AND ${workOrders.status} != 'cancelled'`)).get();
+      const unitCount = await db.select({ count: sql<number>`count(*)` }).from(units).where(eq(units.propertyId, p.id)).get();
+      const totalExpenses = await db.select({ total: sql<number>`COALESCE(sum(${expenses.amount}), 0)` }).from(expenses).where(eq(expenses.propertyId, p.id)).get();
 
       return {
         ...p,
@@ -30,7 +30,7 @@ export async function GET() {
         unitCount: unitCount?.count || 0,
         totalExpenses: totalExpenses?.total || 0,
       };
-    });
+    }));
 
     return NextResponse.json(enriched);
   } catch (error) {
@@ -41,7 +41,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,13 +54,13 @@ export async function POST(req: NextRequest) {
     }
 
     const id = generateId();
-    db.insert(properties).values({
+    await db.insert(properties).values({
       id,
       userId: session.userId,
       ...parsed.data,
     }).run();
 
-    const property = db.select().from(properties).where(eq(properties.id, id)).get();
+    const property = await db.select().from(properties).where(eq(properties.id, id)).get();
     return NextResponse.json(property, { status: 201 });
   } catch (error) {
     console.error("Properties POST error:", error);

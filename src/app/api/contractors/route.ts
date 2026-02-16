@@ -8,11 +8,11 @@ import { eq, desc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const list = db.select().from(contractors).where(eq(contractors.userId, session.userId)).orderBy(desc(contractors.rating)).all();
+    const list = await db.select().from(contractors).where(eq(contractors.userId, session.userId)).orderBy(desc(contractors.rating)).all();
     return NextResponse.json(list);
   } catch (error) {
     console.error("Contractors GET error:", error);
@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
     const id = generateId();
-    db.insert(contractors).values({ id, userId: session.userId, ...parsed.data }).run();
+    await db.insert(contractors).values({ id, userId: session.userId, ...parsed.data }).run();
 
-    const contractor = db.select().from(contractors).where(eq(contractors.id, id)).get();
+    const contractor = await db.select().from(contractors).where(eq(contractors.id, id)).get();
     return NextResponse.json(contractor, { status: 201 });
   } catch (error) {
     console.error("Contractors POST error:", error);

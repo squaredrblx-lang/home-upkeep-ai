@@ -10,7 +10,7 @@ import { initializeDatabase } from "@/lib/db";
 // POST /api/auth — login or register
 export async function POST(req: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const body = await req.json();
     const action = body.action; // "login" | "register"
 
@@ -22,13 +22,13 @@ export async function POST(req: NextRequest) {
 
       const { email, password, name } = parsed.data;
 
-      const existing = db.select().from(users).where(eq(users.email, email)).get();
+      const existing = await db.select().from(users).where(eq(users.email, email)).get();
       if (existing) {
         return NextResponse.json({ error: "Email already registered" }, { status: 409 });
       }
 
       const id = generateId();
-      db.insert(users).values({
+      await db.insert(users).values({
         id,
         email,
         passwordHash: hashPassword(password),
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
       const { email, password } = parsed.data;
 
-      const user = db.select().from(users).where(eq(users.email, email)).get();
+      const user = await db.select().from(users).where(eq(users.email, email)).get();
       if (!user || !verifyPassword(password, user.passwordHash)) {
         return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
       }
@@ -96,13 +96,13 @@ export async function POST(req: NextRequest) {
 // GET /api/auth — get current session
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ user: null });
     }
 
-    const user = db.select().from(users).where(eq(users.id, session.userId)).get();
+    const user = await db.select().from(users).where(eq(users.id, session.userId)).get();
     if (!user) {
       return NextResponse.json({ user: null });
     }
